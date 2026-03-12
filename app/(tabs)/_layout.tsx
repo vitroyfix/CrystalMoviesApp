@@ -1,71 +1,77 @@
 import React from 'react';
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { Tabs } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { StyleSheet, Platform } from 'react-native';
+// Using Lucide icons to match your UI style
+import { Home, Film, Tv, Menu } from 'lucide-react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: false,
+        tabBarActiveTintColor: '#E50914', // Crystal Red
+        tabBarInactiveTintColor: '#888',
+        tabBarLabelStyle: styles.label,
+        tabBarStyle: styles.tabBar,
+        // This adds the "Glassmorphism" effect to the bottom bar
+        tabBarBackground: () => (
+          <BlurView 
+            intensity={90} 
+            tint="dark" 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
       }}>
+      
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Home',
+          tabBarIcon: ({ color }) => <Home color={color} size={24} />,
         }}
       />
+
       <Tabs.Screen
-        name="two"
+        name="movies"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: 'Movies',
+          tabBarIcon: ({ color }) => <Film color={color} size={24} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="tv"
+        options={{
+          title: 'TV Shows',
+          tabBarIcon: ({ color }) => <Tv color={color} size={24} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'More',
+          tabBarIcon: ({ color }) => <Menu color={color} size={24} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: 'absolute',
+    borderTopWidth: 0,
+    elevation: 0,
+    height: Platform.OS === 'ios' ? 88 : 65,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+    paddingTop: 10,
+    backgroundColor: 'transparent', // Crucial for BlurView to work
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: -5,
+  },
+});
