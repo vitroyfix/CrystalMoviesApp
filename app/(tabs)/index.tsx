@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, ImageBackground, ScrollView, 
-  TouchableOpacity, Dimensions, FlatList, ActivityIndicator 
+  TouchableOpacity, Dimensions, FlatList, ActivityIndicator,
+  BackHandler, Alert // Added for Exit logic
 } from 'react-native';
 import { BlurView } from 'expo-blur'; 
-import { Play, Plus, Search, User, Info } from 'lucide-react-native';
+import { Play, Plus, Search, User, Info, Home as HomeIcon } from 'lucide-react-native';
 import { useHomeData } from '../../hooks/useMovies';
 
 const { width } = Dimensions.get('window');
@@ -12,24 +13,40 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const { trending, action, loading } = useHomeData();
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
-
   const flatListRef = useRef<FlatList>(null);
 
-  // 1. THE AUTOMATIC TRANSITION ENGINE
+  // --- 1. BACK TO EXIT LOGIC ---
+  useEffect(() => {
+    const backAction = () => {
+      // Only show alert if we are essentially at the "root" of the app
+      Alert.alert("Wait!", "Are you sure you want to exit CrystalMovies?", [
+        { text: "Cancel", onPress: () => null, style: "cancel" },
+        { text: "YES", onPress: () => BackHandler.exitApp() }
+      ]);
+      return true; // Prevents default back button behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove(); // Cleanup listener on unmount
+  }, []);
+
+  // --- 2. AUTOMATIC HERO TRANSITION ---
   useEffect(() => {
     if (trending.length > 0) {
       const interval = setInterval(() => {
         let nextIndex = activeHeroIndex + 1;
-        if (nextIndex >= 5) nextIndex = 0; // Loop back after 5 movies
+        if (nextIndex >= 5) nextIndex = 0;
 
         setActiveHeroIndex(nextIndex);
-        
-        // This is the command that creates the physical movement
         flatListRef.current?.scrollToIndex({
           index: nextIndex,
           animated: true,
         });
-      }, 4000); // 4 seconds so you can see it happening
+      }, 4000);
 
       return () => clearInterval(interval);
     }
@@ -41,14 +58,22 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  // 2. HERO PAGE RENDER
   const renderHeroItem = ({ item }: { item: any }) => (
     <ImageBackground source={{ uri: item?.uri }} style={styles.heroImage}>
       <View style={styles.heroActionsContainer}>
         <View style={styles.heroActions}>
-          <TouchableOpacity style={styles.actionBtn}><Plus color="#fff" size={28} /><Text style={styles.actionText}>My List</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}><Play fill="black" color="black" size={22} /><Text style={styles.playLabel}>Play</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}><Info color="#fff" size={28} /><Text style={styles.actionText}>Info</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Plus color="#fff" size={28} />
+            <Text style={styles.actionText}>My List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.playBtn}>
+            <Play fill="black" color="black" size={22} />
+            <Text style={styles.playLabel}>Play</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Info color="#fff" size={28} />
+            <Text style={styles.actionText}>Info</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
@@ -67,13 +92,13 @@ export default function HomeScreen() {
       <View style={styles.navBar}>
         <TouchableOpacity><Search color="#fff" size={26} strokeWidth={2.5} /></TouchableOpacity>
         <TouchableOpacity>
-          <BlurView intensity={40} tint="dark" style={styles.profileGlass}><User color="#fff" size={22} /></BlurView>
+          <BlurView intensity={40} tint="dark" style={styles.profileGlass}>
+            <User color="#fff" size={22} />
+          </BlurView>
         </TouchableOpacity>
       </View>
 
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-        
-        {/* 3. THE NATIVE SLIDER */}
         <FlatList
           ref={flatListRef}
           data={trending.slice(0, 5)}
@@ -82,20 +107,17 @@ export default function HomeScreen() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => `hero-${item.id}`}
-          // CRUCIAL: This tells the list exactly how wide each "page" is
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
             index,
           })}
-          // Handles manual swipes
           onMomentumScrollEnd={(e) => {
             const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
             setActiveHeroIndex(newIndex);
           }}
         />
 
-        {/* ROWS */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Trending Now</Text>
           <FlatList horizontal data={trending} renderItem={renderMovieCard} keyExtractor={item => item.id} showsHorizontalScrollIndicator={false} />

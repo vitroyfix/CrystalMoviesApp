@@ -1,29 +1,20 @@
-import React from 'react';
+// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import { StyleSheet, Platform } from 'react-native';
-// Using Lucide icons to match your UI style
-import { Home, Film, Tv, Menu } from 'lucide-react-native';
+import { Home, Film, Tv, Search } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#E50914', // Crystal Red
-        tabBarInactiveTintColor: '#888',
-        tabBarLabelStyle: styles.label,
-        tabBarStyle: styles.tabBar,
-        // This adds the "Glassmorphism" effect to the bottom bar
-        tabBarBackground: () => (
-          <BlurView 
-            intensity={90} 
-            tint="dark" 
-            style={StyleSheet.absoluteFill} 
-          />
-        ),
-      }}>
-      
+    <Tabs screenOptions={{ 
+      headerShown: false, 
+      tabBarActiveTintColor: '#E50914',
+      tabBarInactiveTintColor: '#888',
+      tabBarStyle: { 
+        backgroundColor: '#000', 
+        borderTopWidth: 0,
+        height: 60,
+        paddingBottom: 8
+      }
+    }}>
       <Tabs.Screen
         name="index"
         options={{
@@ -31,47 +22,27 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Home color={color} size={24} />,
         }}
       />
-
       <Tabs.Screen
-        name="movies"
+        name="movies" // This will be app/(tabs)/movies.tsx
         options={{
           title: 'Movies',
           tabBarIcon: ({ color }) => <Film color={color} size={24} />,
         }}
       />
-
       <Tabs.Screen
-        name="tv"
+        name="tv" // This will be app/(tabs)/tv.tsx
         options={{
           title: 'TV Shows',
           tabBarIcon: ({ color }) => <Tv color={color} size={24} />,
         }}
       />
-
       <Tabs.Screen
-        name="menu"
+        name="search"
         options={{
-          title: 'More',
-          tabBarIcon: ({ color }) => <Menu color={color} size={24} />,
+          title: 'Search',
+          tabBarIcon: ({ color }) => <Search color={color} size={24} />,
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    position: 'absolute',
-    borderTopWidth: 0,
-    elevation: 0,
-    height: Platform.OS === 'ios' ? 88 : 65,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
-    paddingTop: 10,
-    backgroundColor: 'transparent', // Crucial for BlurView to work
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: -5,
-  },
-});
