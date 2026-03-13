@@ -2,58 +2,46 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, ImageBackground, ScrollView, 
   TouchableOpacity, Dimensions, FlatList, ActivityIndicator,
-  BackHandler, Alert // Added for Exit logic
+  BackHandler, Alert 
 } from 'react-native';
 import { BlurView } from 'expo-blur'; 
-import { Play, Plus, Search, User, Info, Home as HomeIcon } from 'lucide-react-native';
+import { Play, Plus, Search, User, Info } from 'lucide-react-native';
 import { useHomeData } from '../../hooks/useMovies';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
+  const router = useRouter(); 
   const { trending, action, loading } = useHomeData();
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  // --- 1. BACK TO EXIT LOGIC ---
   useEffect(() => {
     const backAction = () => {
-      // Only show alert if we are essentially at the "root" of the app
       Alert.alert("Wait!", "Are you sure you want to exit CrystalMovies?", [
         { text: "Cancel", onPress: () => null, style: "cancel" },
         { text: "YES", onPress: () => BackHandler.exitApp() }
       ]);
-      return true; // Prevents default back button behavior
+      return true;
     };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
-
-    return () => backHandler.remove(); // Cleanup listener on unmount
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => backHandler.remove();
   }, []);
 
-  // --- 2. AUTOMATIC HERO TRANSITION ---
-  useEffect(() => {
-    if (trending.length > 0) {
-      const interval = setInterval(() => {
-        let nextIndex = activeHeroIndex + 1;
-        if (nextIndex >= 5) nextIndex = 0;
-
-        setActiveHeroIndex(nextIndex);
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: true,
-        });
-      }, 4000);
-
-      return () => clearInterval(interval);
-    }
-  }, [trending, activeHeroIndex]);
+  // Updated Navigation Handler to pass mediaType (Critical for Detail Page)
+  const navigateToDetail = (id: string, type?: string) => {
+    router.push({
+      pathname: `/movie/${id}`,
+      params: { type: type || 'movie' } 
+    });
+  };
 
   const renderMovieCard = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={() => navigateToDetail(item.id, item.mediaType)}
+    >
       <ImageBackground source={{ uri: item.uri }} style={styles.poster} imageStyle={{ borderRadius: 4 }} />
     </TouchableOpacity>
   );
@@ -66,11 +54,19 @@ export default function HomeScreen() {
             <Plus color="#fff" size={28} />
             <Text style={styles.actionText}>My List</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}>
+          
+          <TouchableOpacity 
+            style={styles.playBtn}
+            onPress={() => navigateToDetail(item.id, item.mediaType)}
+          >
             <Play fill="black" color="black" size={22} />
             <Text style={styles.playLabel}>Play</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
+          
+          <TouchableOpacity 
+            style={styles.actionBtn}
+            onPress={() => navigateToDetail(item.id, item.mediaType)}
+          >
             <Info color="#fff" size={28} />
             <Text style={styles.actionText}>Info</Text>
           </TouchableOpacity>
@@ -78,6 +74,18 @@ export default function HomeScreen() {
       </View>
     </ImageBackground>
   );
+
+  // Auto-scroll logic for Hero Section
+  useEffect(() => {
+    if (trending.length > 0) {
+      const interval = setInterval(() => {
+        let nextIndex = (activeHeroIndex + 1) % 5;
+        setActiveHeroIndex(nextIndex);
+        flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [trending, activeHeroIndex]);
 
   if (loading) {
     return (
@@ -107,11 +115,6 @@ export default function HomeScreen() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => `hero-${item.id}`}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
           onMomentumScrollEnd={(e) => {
             const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
             setActiveHeroIndex(newIndex);
