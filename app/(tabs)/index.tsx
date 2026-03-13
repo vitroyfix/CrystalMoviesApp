@@ -1,99 +1,112 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, ImageBackground, ScrollView, 
-  TouchableOpacity, Dimensions, FlatList 
+  TouchableOpacity, Dimensions, FlatList, ActivityIndicator 
 } from 'react-native';
 import { BlurView } from 'expo-blur'; 
 import { Play, Plus, Search, User, Info } from 'lucide-react-native';
+import { useHomeData } from '../../hooks/useMovies';
 
 const { width } = Dimensions.get('window');
 
-// 1. SELECTIVE CATEGORIES TO DISPLAY AS ROWS
-const SELECTED_GENRES = [
-  { id: 'gen1', title: 'Action'},
-  { id: 'gen2', title: 'Horror' },
-  { id: 'gen3', title: 'Sci-Fi' }
-];
-
-// Mock Data for posters (We will replace this with your actual scraping/TMDB data)
-const MOCK_MOVIES = [
-  { id: '1', uri: 'https://image.tmdb.org/t/p/w500/reEMDx9pY3icQ9YvjNpS9vT4B4u.jpg' },
-  { id: '2', uri: 'https://image.tmdb.org/t/p/w500/279y996mb75vLy60ishq366Ynuh.jpg' },
-  { id: '3', uri: 'https://image.tmdb.org/t/p/w500/u3b99Hc9Mgi7pjaZ14PsySLcUMw.jpg' },
-  { id: '4', uri: 'https://image.tmdb.org/t/p/w500/8GxvA9zDZ96lbJA7nG1oQ0Yp6cy.jpg' },
-];
-
 export default function HomeScreen() {
-  
+  const { trending, action, loading } = useHomeData();
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
+
+  const flatListRef = useRef<FlatList>(null);
+
+  // 1. THE AUTOMATIC TRANSITION ENGINE
+  useEffect(() => {
+    if (trending.length > 0) {
+      const interval = setInterval(() => {
+        let nextIndex = activeHeroIndex + 1;
+        if (nextIndex >= 5) nextIndex = 0; // Loop back after 5 movies
+
+        setActiveHeroIndex(nextIndex);
+        
+        // This is the command that creates the physical movement
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+      }, 4000); // 4 seconds so you can see it happening
+
+      return () => clearInterval(interval);
+    }
+  }, [trending, activeHeroIndex]);
+
   const renderMovieCard = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.card}>
-      <ImageBackground 
-        source={{ uri: item.uri }} 
-        style={styles.poster} 
-        imageStyle={{ borderRadius: 4 }} 
-      />
+      <ImageBackground source={{ uri: item.uri }} style={styles.poster} imageStyle={{ borderRadius: 4 }} />
     </TouchableOpacity>
   );
 
+  // 2. HERO PAGE RENDER
+  const renderHeroItem = ({ item }: { item: any }) => (
+    <ImageBackground source={{ uri: item?.uri }} style={styles.heroImage}>
+      <View style={styles.heroActionsContainer}>
+        <View style={styles.heroActions}>
+          <TouchableOpacity style={styles.actionBtn}><Plus color="#fff" size={28} /><Text style={styles.actionText}>My List</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.playBtn}><Play fill="black" color="black" size={22} /><Text style={styles.playLabel}>Play</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}><Info color="#fff" size={28} /><Text style={styles.actionText}>Info</Text></TouchableOpacity>
+        </View>
+      </View>
+    </ImageBackground>
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, {justifyContent: 'center'}]}>
+        <ActivityIndicator size="large" color="#E50914" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      
-      {/* GLASSMORPHIC NAVBAR */}
       <View style={styles.navBar}>
         <TouchableOpacity><Search color="#fff" size={26} strokeWidth={2.5} /></TouchableOpacity>
         <TouchableOpacity>
-          <BlurView intensity={40} tint="dark" style={styles.profileGlass}>
-            <User color="#fff" size={22} />
-          </BlurView>
+          <BlurView intensity={40} tint="dark" style={styles.profileGlass}><User color="#fff" size={22} /></BlurView>
         </TouchableOpacity>
       </View>
 
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         
-        {/* HERO SECTION */}
-        <ImageBackground 
-          source={{ uri: 'https://image.tmdb.org/t/p/original/t56oO949q79S99v9696gnMBMG9y.jpg' }} 
-          style={styles.heroImage}
-        >
-          <View style={styles.heroGradient}>
-            <Text style={styles.heroTitle}>MONEY HEIST</Text>
-            <View style={styles.heroActions}>
-              <TouchableOpacity style={styles.actionBtn}><Plus color="#fff" size={28} /><Text style={styles.actionText}>My List</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.playBtn}><Play fill="black" color="black" size={22} /><Text style={styles.playLabel}>Play</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}><Info color="#fff" size={28} /><Text style={styles.actionText}>Info</Text></TouchableOpacity>
-            </View>
-          </View>
-        </ImageBackground>
+        {/* 3. THE NATIVE SLIDER */}
+        <FlatList
+          ref={flatListRef}
+          data={trending.slice(0, 5)}
+          renderItem={renderHeroItem}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => `hero-${item.id}`}
+          // CRUCIAL: This tells the list exactly how wide each "page" is
+          getItemLayout={(_, index) => ({
+            length: width,
+            offset: width * index,
+            index,
+          })}
+          // Handles manual swipes
+          onMomentumScrollEnd={(e) => {
+            const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+            setActiveHeroIndex(newIndex);
+          }}
+        />
 
-        {/* --- MAIN CONTENT ROWS --- */}
-
-        {/* 1. MANDATORY TRENDING ROW */}
+        {/* ROWS */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Trending Now</Text>
-          <FlatList 
-            horizontal
-            data={MOCK_MOVIES}
-            renderItem={renderMovieCard}
-            keyExtractor={item => item.id}
-            showsHorizontalScrollIndicator={false}
-          />
+          <FlatList horizontal data={trending} renderItem={renderMovieCard} keyExtractor={item => item.id} showsHorizontalScrollIndicator={false} />
         </View>
 
-        {/* 2. DYNAMIC SELECTED CATEGORY ROWS */}
-        {SELECTED_GENRES.map((genre) => (
-          <View key={genre.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{genre.title}</Text>
-            <FlatList 
-              horizontal
-              data={[...MOCK_MOVIES].reverse()} // Reverse just to look different for now
-              renderItem={renderMovieCard}
-              keyExtractor={item => `${genre.id}-${item.id}`}
-              showsHorizontalScrollIndicator={false}
-            />
-          </View>
-        ))}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Action Hits</Text>
+          <FlatList horizontal data={action} renderItem={renderMovieCard} keyExtractor={item => item.id} showsHorizontalScrollIndicator={false} />
+        </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
     </View>
   );
@@ -103,18 +116,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   navBar: { position: 'absolute', top: 0, width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, zIndex: 10 },
   profileGlass: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
-  heroImage: { width: width, height: 550, justifyContent: 'flex-end' },
-  heroGradient: { backgroundColor: 'rgba(0,0,0,0.3)', paddingBottom: 30, alignItems: 'center' },
-  heroNavPills: { flexDirection: 'row', gap: 20, marginBottom: 20 },
-  pillText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  heroTitle: { color: '#fff', fontSize: 48, fontWeight: 'bold', letterSpacing: -1, marginBottom: 20, textAlign: 'center' },
-  heroActions: { flexDirection: 'row', alignItems: 'center', width: '90%', justifyContent: 'space-around' },
-  playBtn: { backgroundColor: '#fff', flexDirection: 'row', paddingHorizontal: 35, paddingVertical: 10, borderRadius: 4, alignItems: 'center' },
+  heroImage: { width: width, height: 600, justifyContent: 'flex-end' },
+  heroActionsContainer: { paddingBottom: 30, width: '100%' },
+  heroActions: { flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'space-evenly' },
+  playBtn: { backgroundColor: '#fff', flexDirection: 'row', paddingHorizontal: 35, paddingVertical: 10, borderRadius: 6, alignItems: 'center' },
   playLabel: { color: '#000', fontWeight: 'bold', fontSize: 18, marginLeft: 8 },
   actionBtn: { alignItems: 'center' },
-  actionText: { color: '#fff', fontSize: 12, marginTop: 4 },
-  
-  // ROW STYLES
+  actionText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: '600' },
   section: { marginTop: 25, paddingLeft: 15 },
   sectionTitle: { color: '#fff', fontSize: 19, fontWeight: 'bold', marginBottom: 12 },
   card: { marginRight: 12 },
